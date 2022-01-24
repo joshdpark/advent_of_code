@@ -4,15 +4,29 @@ function read_graph(path)
     The second array will be indexed as the first one but will contain all of the possible connections.
     """
     lines = readlines(path)
-    values = mapreduce(x -> split(x, '-'), vcat, lines) |> unique
-    hash = Dict(v => i for (i, v) = enumerate(values))
+    val = mapreduce(x -> split(x, '-'), vcat, lines) |> unique
+    isbig(c::SubString) = c[1] in 'A':'Z'
+    big_caves = filter(isbig, val)
+    hash = Dict(v => i for (i, v) = enumerate(val))
     graph = Dict{Integer, Vector{Integer}}()
     for line in lines
         l, r = Tuple(split(line, "-"))
+        if l in big_caves
+        end
         get!(graph, hash[l], Integer[])
-        get!(graph, hash[r], Integer[])
         l != "start" && push!(graph[hash[r]], hash[l])
+        if r in big_caves
+        end
+        get!(graph, hash[r], Integer[])
         r != "start" && push!(graph[hash[l]], hash[r])
+    end
+    for cave = big_caves
+        vertex = hash[cave]
+        adj = graph[vertex]
+        for a = adj
+            append!(graph[a], setdiff(adj, a))
+        end
+        delete!(graph, vertex)
     end
     return hash, graph
 end
@@ -26,7 +40,7 @@ end
 # islowerandnotstart(s::String) = islower(s) && !isstart(s)
 
 function constraint(path::Vector{Int}, small)
-    # get all lowercase in path
+    # get all small caves in path
     lower = filter(x->x in small, path)
     # in lower is there at least one element that shows up twice?
     return unique(lower) != lower
@@ -42,6 +56,7 @@ function dfs_recursion(graph::Dict{Integer, Vector{Integer}}, small::Set, source
         # println("      descending into $a")
         if a == goal
             count += 1
+            continue
         elseif part_b && constraint(path, small) && (a in path) && a in small
             continue
         elseif !part_b && (a in path) && a in small
