@@ -1,0 +1,201 @@
+        - struct Vertex
+        -     label::Integer
+        - end
+        - Base.convert(::Type{Vertex}, x::Integer) = Vertex(x) # Int->Vertex
+        - # getindex(x::Dict{Vertex, <:Real}, i::Integer) = x[convert(Vertex, i)]
+        - # get(x::Dict{Vertex, <:Real}, i::Integer) = getindex(x,i)
+        - 
+        - struct Edge
+        -     origin::Vertex
+        -     dest::Vertex
+        -     weight::Float64
+        0     Edge(o, d, w) = o == d ? error("No loops") : new(o, d, w)
+        - end
+        - Edge(x, y) = Edge(x, y, 1) # default weight = 1
+        - 
+        - struct Graph
+        -     vertices::Vector{Vertex}
+        -     adjacencylist::Dict{Vertex, Vector{Edge}}
+        - end
+        - vertices(g::Graph) = g.vertices
+        - adjlist(g::Graph) = g.adjacencylist
+        - # get(g::Graph, ind) = adjlist(g)[Vertex(ind)]
+        - # getindex(g::Graph, ind) = get(g, ind)
+        - 
+        - struct Item
+        0     element
+        -     priority
+        - end
+        - 
+        - # Heap struct and methods
+        - struct Heap
+        0     items::Vector{Item}
+        - end
+        - Heap() = Heap([])
+        - Base.getindex(h::Heap, i::Int64) = Base.getindex(h.items, i)
+        - Base.setindex!(h::Heap, item::Item, ind::Integer) = h.items[ind] = item
+        - Base.length(h::Heap) = Base.length(h.items)
+        - Base.max(i::Item, j::Item) = i.priority > j.priority ? i : j
+        - getparentindex(parentindex) = ((parentindex - 1) ÷ 2) + 1
+        - firstleafindex(h::Heap) = length(h) ÷ 2 + 1
+ 10853952 childindex(ind::Integer) = ind > 0 ? [(2 * ind) + 1, 2 * (ind + 1)] .- 1 : error("no 0 index")# 1 indexing
+        - childitems(ind::Integer, h::Heap) = h.items[childindex(ind)]
+        - function highestprioritychild(ind::Integer, h::Heap)
+        -     # potential issue if getting only 1 child
+        0     child_i = childindex(ind)
+        0     if last(child_i) ∉ 1:length(h)
+        0         return (h.items[child_i[1]], child_i[1])
+        -     end
+        0     children = h.items[child_i]
+        0     if children[1].priority < children[2].priority
+        0         return (children[1], child_i[1])
+        -     else
+        0         return(children[2], child_i[2])
+        -     end
+        - end
+        - 
+        - function bubbleup!(h::Heap, index::Integer=length(h))
+        0     current = h[index]
+        0     while index > 1
+        0         parentindex = getparentindex(index)
+        0         if h[parentindex].priority > current.priority
+        0             h[index] = h[parentindex]
+        -             index = parentindex
+        -         else
+        -             break
+        -         end
+        -     end
+        0     h[index] = current
+        - end
+        - 
+        - # example
+        - _pq = Heap([Item("a", 9), Item("b", 7), Item("c", 5),
+        -            Item("d", 6), Item("e", 2), Item("f", 4),
+        -            Item("g", 3), Item("h", 8)])
+        - 
+        - function pushdown!(pq::Heap, index::Integer = 1)
+        0     current = pq[index]
+        0     while index < firstleafindex(pq)
+        0         (child, childindex) = highestprioritychild(index, pq)
+        0         if child.priority < current.priority
+        0             pq[index] = pq[childindex]
+        -             index = childindex
+        -         else
+        -             break
+        -         end
+        -     end
+        0     pq[index] = current
+        - end
+        - 
+        - function insert!(item::Item, h::Heap)
+        -     push!(h.items, item)
+        -     bubbleup!(h)
+        - end
+        - 
+        - function top!(h::Heap)
+        0     isempty(h.items) && error("heap is empty")
+        0     last = pop!(h.items)
+        0     if isempty(h.items)
+        0         return last
+        -     else
+        0         firstitem = h[1]
+        0         h[1] = last
+        0         pushdown!(h)
+        0         return firstitem
+        -     end
+        - end
+        - 
+        - function update!(oldvalue, newpriority, h::Heap)
+        -     index = findfirst(x -> x.element == oldvalue, h.items)
+        -     if isnothing(index)
+        -         insert!(Item(oldvalue, newpriority), h)
+        -     else
+        -         oldpriority = h[index].priority
+        -         h[index] = Item(oldvalue, newpriority)
+        -         if newpriority < oldpriority
+        -             bubbleup!(h, index)
+        -         elseif newpriority > oldpriority
+        -             pushdown!(h, index)
+        -         end
+        -     end
+        - end
+        - 
+        - function create_vertices(m::Matrix)
+    80160     map(x -> Vertex(x[1]), enumerate(m)) |> vec
+        - end
+        - 
+        - function find_neighbors(coord::CartesianIndex{2}, m::Matrix{Int})
+  1440000     address = [(1,0), (0,1), (-1,0), (0,-1)]
+        -     # address = Base.product(-1:0, -1:0)
+        -     # don't return the input coordinate
+   800000     neighbors = vec([coord + CartesianIndex(x) for x = address if x != (0,0)])
+        0     inbounds = [checkbounds(Bool, m, x) for x = neighbors]
+        0     return neighbors[inbounds]
+        - end
+        - 
+        - function find_edgelist(i::Int64, ci, m::Matrix)#::[index, [edges]]
+        -     neighbors = find_neighbors(ci[i], m)
+        -     (Vertex(i) => [Edge(o, findfirst(==(n), ci), m[n]) for n = neighbors, o = i])
+        - end
+        - 
+        - function create_adjlist(m::Matrix)
+        -     ci = (vec ∘ CartesianIndices ∘ size)(m)
+        -     ajdlist = map(x -> find_edgelist(x, ci, m), 1:length(m)) |> Dict
+        - end
+        - 
+        - function dijkstra(graph::Graph, start::Vertex, goal::Vertex)
+       80     h = Heap()
+       96     insert!(Item(start, 0), h)
+        0     distances = Dict(v => typemax(Int) for v in vertices(graph) if v != start)
+        0     parents = Dict(v => Vertex(0) for v in vertices(graph))
+        0     distances[start] = 0
+        -     while true
+        0         v = top!(h).element
+   160560         v == goal && return (distances, parents, v)
+        0         for e in graph.adjacencylist[v]
+        0             u = e.dest
+   131376             if distances[u] > distances[v] + e.weight
+    31616                 distances[u] = e.weight + distances[v]
+   160384                 parents[u] = v
+   202144                 insert!(Item(u, distances[u]), h)
+        -             end
+        -         end
+        -     end
+        -     return (nothing, parents)
+        - end
+        - 
+        - function parse_input(io::IO)
+    16656     text = readlines(io)
+    80080     matrix = zeros(Integer, length(text), length(first(text)))
+        0     reduce(hcat, [parse.(Integer, collect(line)) for line = text])
+        - end
+        - 
+        - tile(m::Matrix, x) = ((m .- 1 .+ x) .% 9) .+ 1
+        - makecol(m::Matrix, range) = vcat([tile(m, x) for x = range]...)
+        - makem(m::Matrix) = hcat([makecol(m, range(x, length = 5)) for x=0:4]...)
+        - 
+        - function partone(file)
+        0     m = open(parse_input, file)
+        0     vertices = create_vertices(m)
+        0     adjlist = create_adjlist(m)
+        0     g = Graph(vertices, adjlist)
+        0     goal = last(g.vertices)
+        0     dij = dijkstra(g, Vertex(1), goal)
+        0     return dij[1][goal]
+        - end
+        - 
+        - function parttwo(file)
+        -     raw = open(parse_input, file)
+        -     m = makem(raw)
+        -     vertices = create_vertices(m)
+        -     adjlist = create_adjlist(m)
+        -     g = Graph(vertices, adjlist)
+        -     goal = last(g.vertices)
+        -     dij = dijkstra(g, Vertex(1), goal)
+        -     return dij[1][goal]
+        - end
+        - 
+        - function main(file)
+        -     partone(file)
+        -     parttwo(file)
+        - end

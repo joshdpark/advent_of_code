@@ -1,0 +1,72 @@
+        - function heapifyfirst!(q)
+        0     L = length(q)
+        -     n = 1
+        0     while true
+        -         n′ = n
+        0         l = 2 * n
+        0         r = l + 1
+        0         if l ≤ L && first(q[n′]) > first(q[l])
+        -             n′ = l
+        -         end
+        0         if r ≤ L && first(q[n′]) > first(q[r])
+        -             n′ = r
+        -         end
+        0         if n != n′
+        0             q[n], q[n′] = q[n′], q[n]
+        -             n = n′
+        -         else
+        0             break
+        -         end
+        -     end
+        - end
+        - 
+        - function heapifylast!(q)
+        0     n = length(q)
+        0     while n > 1 && first(q[n ÷ 2]) > first(q[n])
+        0         q[n ÷ 2], q[n] = q[n], q[n ÷ 2]
+        0         n ÷= 2
+        -     end
+        - end
+        - 
+        - function solve1(input)
+        0     W, H = size(input)
+    32832     seen = falses(W, H)
+  2080160     risk = zeros(Int, W, H)
+      224     q = [0 => (1, 1)]
+        0     while !seen[W, H]
+        0         r, (i, j) = q[1]
+        0         q[1] = q[end]
+        0         pop!(q)
+        0         heapifyfirst!(q)
+        0         for (δᵢ, δⱼ) in ((-1, 0), (1, 0), (0, -1), (0, 1))
+        0             i′ = i + δᵢ
+        0             j′ = j + δⱼ
+        0             if 1 ≤ i′ ≤ W && 1 ≤ j′ ≤ H && !seen[i′, j′]
+        0                 seen[i′, j′] = true
+        0                 r′ = r + input[i′, j′]
+        0                 risk[i′, j′] = r′
+    62016                 push!(q, r′ => (i′, j′))
+        0                 heapifylast!(q)
+        -             end
+        -         end
+        -     end
+        0     risk[W, H]
+        - end
+        - 
+        - f(x, y) = ((x + y) % 9) + 1
+        - 
+        - function solve2(input)
+  1921920     input′ = [input f.(input, 0) f.(input, 1) f.(input, 2) f.(input, 3)
+        -               f.(input, 0) f.(input, 1) f.(input, 2) f.(input, 3) f.(input, 4)
+        -               f.(input, 1) f.(input, 2) f.(input, 3) f.(input, 4) f.(input, 5)
+        -               f.(input, 2) f.(input, 3) f.(input, 4) f.(input, 5) f.(input, 6)
+        -               f.(input, 3) f.(input, 4) f.(input, 5) f.(input, 6) f.(input, 7)]
+        0     solve1(input′)
+        - end
+        - 
+        - function main(file)
+     1936     input = hcat([[parse(Int, ch) for ch in line] for line in eachline(file)]...)
+       16     println(solve1(input))
+       16     println(solve2(input))
+        - end
+        - 

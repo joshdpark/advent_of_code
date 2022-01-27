@@ -1,9 +1,3 @@
-# 1. parse input
-# how do I turn the matrix into edges?
-# how do I create a data structure for a weighted graph?
-# 2. create a data graph structure
-using Infiltrator
-
 struct Vertex
     label::Integer
 end
@@ -82,7 +76,6 @@ _pq = Heap([Item("a", 9), Item("b", 7), Item("c", 5),
 function pushdown!(pq::Heap, index::Integer = 1)
     current = pq[index]
     while index < firstleafindex(pq)
-        # TODO: issue with highestprioritychild where only 1 child
         (child, childindex) = highestprioritychild(index, pq)
         if child.priority < current.priority
             pq[index] = pq[childindex]
@@ -100,7 +93,7 @@ function insert!(item::Item, h::Heap)
 end
 
 function top!(h::Heap)
-    if isempty(h.items) error("heap is empty") end
+    isempty(h.items) && error("heap is empty")
     last = pop!(h.items)
     if isempty(h.items)
         return last
@@ -132,10 +125,8 @@ function create_vertices(m::Matrix)
 end
 
 function find_neighbors(coord::CartesianIndex{2}, m::Matrix{Int})
-    address = [(1,0), (0,1), (-1,0), (0,-1)]
-    # address = Base.product(-1:0, -1:0)
-    # don't return the input coordinate
-    neighbors = vec([coord + CartesianIndex(x) for x = address if x != (0,0)])
+    address = ((1,0), (0,1), (-1,0), (0,-1))
+    neighbors = [coord + CartesianIndex(x) for x = address]
     inbounds = [checkbounds(Bool, m, x) for x = neighbors]
     return neighbors[inbounds]
 end
@@ -153,23 +144,18 @@ end
 function dijkstra(graph::Graph, start::Vertex, goal::Vertex)
     h = Heap()
     insert!(Item(start, 0), h)
-    distances = Dict(v => Inf for v in vertices(graph) if v != start)
+    distances = Dict(v => typemax(Int) for v in vertices(graph) if v != start)
     parents = Dict(v => Vertex(0) for v in vertices(graph))
     distances[start] = 0
-    while !isempty(h.items)
-        # print("h:$h\n  distances: $(filter(p -> p.second!=(Inf), distances))\n  parents: $(filter(p -> p.second!=(Vertex(0)), parents))\n\n")
+    while true
         v = top!(h).element
-        # @infiltrate
-        if v == goal
-            return (distances, parents, v)
-        else
-            for e in graph.adjacencylist[v]
-                u = e.dest
-                if distances[u] > distances[v] + e.weight
-                    distances[u] = e.weight + distances[v]
-                    parents[u] = v
-                    update!(u, distances[u], h)
-                end
+        v == goal && return (distances, parents, v)
+        for e in graph.adjacencylist[v]
+            u = e.dest
+            if distances[u] > distances[v] + e.weight
+                distances[u] = e.weight + distances[v]
+                parents[u] = v
+                insert!(Item(u, distances[u]), h)
             end
         end
     end
@@ -182,7 +168,6 @@ function parse_input(io::IO)
     reduce(hcat, [parse.(Integer, collect(line)) for line = text])
 end
 
-# addx(m::Matrix, x) = replace(mod.(m .+ x, 10), 0=>1)
 tile(m::Matrix, x) = ((m .- 1 .+ x) .% 9) .+ 1
 makecol(m::Matrix, range) = vcat([tile(m, x) for x = range]...)
 makem(m::Matrix) = hcat([makecol(m, range(x, length = 5)) for x=0:4]...)
@@ -194,7 +179,7 @@ function partone(file)
     g = Graph(vertices, adjlist)
     goal = last(g.vertices)
     dij = dijkstra(g, Vertex(1), goal)
-    println("part1: $(dij[1][goal])")
+    return dij[1][goal]
 end
 
 function parttwo(file)
@@ -205,7 +190,7 @@ function parttwo(file)
     g = Graph(vertices, adjlist)
     goal = last(g.vertices)
     dij = dijkstra(g, Vertex(1), goal)
-    println("part2: $(dij[1][goal])")
+    return dij[1][goal]
 end
 
 function main(file)
