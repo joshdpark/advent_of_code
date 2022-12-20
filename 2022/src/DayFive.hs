@@ -2,7 +2,6 @@ module DayFive where
 
 import Data.Char
 import Data.List
-import qualified Data.Map as Map
 
 newtype Stack = Stack (Int, [Char])
   deriving (Show, Eq)
@@ -17,17 +16,12 @@ appendStack i s (Stack (id, str) : xs) =
     then Stack (id, s : str) : xs
     else Stack (id, str) : appendStack i s xs
 
-
 layerToStack :: String -> Int -> [Stack] -> [Stack]
 layerToStack [] _ stack = stack
 layerToStack (c : xs) counter stack = go
   where
     updatedstack = if isSpace c then stack else appendStack counter c stack
     go = layerToStack xs (counter + 1) updatedstack
-
--- test' = map (\x -> Stack (x, "")) [1..9]
--- layer = "abc defgh"
--- a = layerToStack layer 1 test'
 
 parseStack :: [String] -> [Stack] -> [Stack]
 -- use fixed width to parse the crates
@@ -36,20 +30,12 @@ parseStack layers stack = go
     indices = [1, 5 .. 33]
     -- foreach layer layerToStack
     f [] stack = stack
-    f (x:xs) stack = ho
+    f (x : xs) stack = ho
       where
-        layer = map (\a -> x !! a) indices
+        layer = map (x !!) indices
         newstack = layerToStack layer 1 stack
         ho = f xs newstack
     go = f layers stack
-
--- empty_stack = map (\x -> Stack (x, "")) [1..9]
--- test' = [
---     "[F]     [S]     [T]     [R]     [B]",
---     "[T]             [P]     [J]        "
---     ]
--- testr = parseStack test' empty_stack
-
 
 stackHeader :: String -> [Stack]
 stackHeader = map (\x -> Stack (digitToInt x, ""))
@@ -103,15 +89,13 @@ moveStackUpg xs i = go
     go = dropCrates (pickCrates xs from amount) to (reverse crates)
 
 followInstructions :: [Instruction] -> [Stack] -> [Stack]
-followInstructions [] stack = stack
-followInstructions (i : is) stack = followInstructions is (moveStack stack i)
+followInstructions is stack = foldl moveStack stack is
 
 followInstructionsUpg :: [Instruction] -> [Stack] -> [Stack]
-followInstructionsUpg [] stack = stack
-followInstructionsUpg (i : is) stack = followInstructionsUpg is (moveStackUpg stack i)
+followInstructionsUpg is stack = foldl moveStackUpg stack is
 
 topOfEachStack :: [Stack] -> String
-topOfEachStack = foldr (\(Stack (_,xs)) -> (:) . head $ xs) []
+topOfEachStack = foldr (\(Stack (_, xs)) -> (:) . head $ xs) []
 
 test = go
   where
@@ -142,7 +126,7 @@ main = do
   d <- readFile "data/day5"
   let l = lines d
   let input = reverse (take 8 l)
-  let empty_stack = map (\x -> Stack (x, "")) [1..9]
+  let empty_stack = map (\x -> Stack (x, "")) [1 .. 9]
   let stacks = parseStack input empty_stack
   let instructions = map parseInstruction (drop 10 l)
   let result1 = followInstructions instructions stacks
