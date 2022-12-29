@@ -35,51 +35,6 @@ parseLines root (x : y : xs) = go
                 size : [file] -> File (down file path) (read size) : b
           go' = Dir path children : parseLines path rest
 
--- f (1 f (2 f(3 f(4 (f 5 [])))))
-
--- parseCommandIndex :: [String] -> [Int]
--- parseCommandIndex lines = go
---   where
---     (indices, _) = foldl f ([], 0) lines
---       where
---         f (indices, counter) line = case words line of
---           "$" : "cd" : [".."] -> (indices, counter + 1)
---           "$" : "cd" : [x] -> (counter : indices, counter + 1)
---           [] -> (counter : indices, counter + 1)
---           _ -> (indices, counter + 1)
---     go = reverse (length lines : indices)
-
--- range :: Int -> Int -> [a] -> [a]
--- range start stop xs = take (stop - start) (drop start xs)
-
--- parseCommand :: [String] -> FileNode
--- parseCommand (dir : _ : nodes) = go
---   where
---     dirname = case words dir of
---       "$" : "cd" : [x] -> x
---       _ -> ""
---     files = foldr f [] nodes
---       where
---         f a = case words a of
---           ("dir" : [d]) -> (:) (Dir d [])
---           (size : [filename]) -> (:) (File filename (read size))
---     go = Dir dirname files
-
--- lineToFileNodes :: [Int] -> [String] -> [FileNode]
--- lineToFileNodes [a] input = []
--- lineToFileNodes _ [] = []
--- lineToFileNodes i input = go
---   where
---     start : [stop] = take 2 i
---     command = range start stop input
---     go = parseCommand command : lineToFileNodes (drop 1 i) input
-
--- parseInput lines = go
---   where
---     clean = filter (/= "$ cd ..") lines
---     indices = parseCommandIndex clean
---     go = lineToFileNodes indices clean
-
 findNode :: Path -> [FileNode] -> Maybe FileNode
 findNode str [] = Nothing
 findNode str (n@(Dir name _) : ns) = go
@@ -130,36 +85,32 @@ filterSumDirs = foldr f 0
   where
     f (_, i) = if i < 100000 then (i +) else (0 +)
 
--- test = go
---   where
---     command1 = lines "$ cd /\n ls\n dir a\n 14848514 b.txt\n 8504156 c.dat"
---     Dir name children = parseCommand command1
---     go = sumDir children
+chooseDirToDelete :: Int -> [(Path, Int)] -> [Int]
+chooseDirToDelete _ [] = []
+chooseDirToDelete total ((path, size):xs) = go
+  where
+    totalDiskSpace = 70000000
+    leastUnusedSpace = 30000000
+    unusedSpace = totalDiskSpace - total
+    go = if unusedSpace + size > leastUnusedSpace
+         then size : chooseDirToDelete total xs
+         else chooseDirToDelete total xs
 
--- go = parseCommand command1
 
--- test' :: IO ()
--- test' = do
---   d <- readFile "data/day7test"
---   let nodes = parseInput . lines $ d
---   let tree@(Dir root children) = buildTree (head nodes) nodes
---   print (filterSumDirs . sumAllDirs $ children)
-
--- main :: IO ()
--- main = do
---   d <- readFile "data/day7"
---   let nodes = parseInput . lines $ d
---   let tree@(Dir root children) = buildTree (head nodes) nodes
---   print (filterSumDirs . sumAllDirs $ children)
-
-main' :: IO ()
-main' = do
+main :: IO ()
+main = do
   d <- readFile "data/day7"
   let l = lines d
   let nodes = parseLines [] l
   let f = findNode ["a", "/"] nodes
   let tree@(Dir root children) = buildTree (head nodes) nodes
-  print (filterSumDirs . sumAllDirs $ children)
+  let sizes = sumAllDirs children
+  let total = sumDir children
+  -- print total
+  print (filterSumDirs sizes)
+  -- print sizes
+  print (minimum (chooseDirToDelete total sizes))
+
   -- print f
 
 -- print (findNode "tddmdzd" nodes)
@@ -169,3 +120,6 @@ main' = do
 -- NOTE: I had to go back and basically fix my parser so that I kept track of
 -- the paths because there were many duplicate dir names and that really messed
 -- up the way that I built my tree
+--
+-- part 2
+-- 11009061 -> too high; need to refine the ordering
