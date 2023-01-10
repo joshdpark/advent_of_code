@@ -119,19 +119,8 @@ constructMonkey ::
   (Integer -> Integer) ->
   (Integer, Integer, Integer) ->
   (Integer, Monkey)
-constructMonkey index list op (d, t, f) = (index, Monkey (S.fromList $ Worry <$> list) (operate op) (divisibleByThrow d (t, f)) (Counter 0))
-
-monkeys' =
-  M.fromList
-    [ constructMonkey 0 [98, 70, 75, 80, 84, 89, 55, 98] (* 2) (11, 1, 4),
-      constructMonkey 1 [59] (^ 2) (19, 7, 3),
-      constructMonkey 2 [77, 95, 54, 65, 89] (+ 6) (7, 0, 5),
-      constructMonkey 3 [71, 64, 75] (+ 2) (17, 6, 2),
-      constructMonkey 4 [74, 55, 87, 98] (* 11) (3, 1, 7),
-      constructMonkey 5 [90, 98, 85, 52, 91, 60] (+ 7) (5, 0, 4),
-      constructMonkey 6 [99, 51] (+ 1) (13, 5, 2),
-      constructMonkey 7 [98, 94, 59, 76, 51, 65, 75] (+ 5) (2, 3, 6)
-    ]
+constructMonkey index list op (d, t, f) =
+  (index, Monkey (S.fromList $ Worry <$> list) (operate op) (divisibleByThrow d (t, f)) (Counter 0))
 
 main :: IO ()
 main = do
