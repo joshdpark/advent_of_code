@@ -1,5 +1,7 @@
 -- https://meldingmonads.files.wordpress.com/2009/06/corecqueues.pdf
 -- https://doisinkidney.com/posts/2018-12-18-traversing-graphs.html
+module UnderstandingBfs where
+import Data.List (foldl', unfoldr)
 type Graph a = a -> [a]
 
 graph 1 = [2,3]
@@ -14,7 +16,7 @@ bfs g r = f r b []
     f x fw bw = x : fw (g x : bw)
 
     b [] = []
-    b qs = foldl (foldr f) b qs []
+    b qs = foldl' (foldr f) b qs []
 
 -- bfs graph 6 -> [6,10]
 -- 6 :  b qs@(graph 6 : [])
@@ -30,5 +32,8 @@ bfs g r = f r b []
 --       foldr f   (10 : b ([] : *)) [] []
 --       f (10 : b ([] : *)) [] []
 --       f (10 : b [[]]) []
---       (10 : b [[]]) : b (graph 
+--       (10 : b [[]]) : b (graph ??????
 
+
+-- unfoldr -> build from a seed
+fibs = unfoldr (\a@(n,f) -> Just (a, (n + 1, f * (n + 1)))) (0, 1)
