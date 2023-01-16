@@ -115,6 +115,23 @@ bfs graph start end = traverse queue distances' parents
               Inf -> (e <| vs', replace e (incDist (d' ! v)) d', replace e (Just v) p')
               _ -> (vs', d', p')
 
+bfs' :: Num a => Graph -> Vertex -> Vertex -> (Seq Vertex, HashMap Vertex a)
+bfs' graph start end = traverse queue visited
+  where
+    queue = S.singleton start
+    visited = HM.singleton start 0
+    traverse S.Empty d = (S.Empty, d) 
+    traverse (vs :|> v) d = traverse newq newv
+      where
+        (newq, newv) = foldl' update' (vs, d) edges
+        edges = graph ! v
+        update' (vs', visited) (Edge e) = (vs'', visited')
+          where
+            (vs'', visited')
+              | HM.member e visited = (e <| vs', HM.insert e (visited ! v + 1) visited)
+              | otherwise = (vs', visited)
+
+
 pullThread :: Vertex -> Parents -> [Vertex]
 pullThread thread parMap = case parMap ! thread of
   Just parent -> thread : pullThread parent parMap

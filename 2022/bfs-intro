@@ -1,0 +1,140 @@
+Doing a breath-first traversal of a graph is a common problem within computer
+science. There is a pretty common implementation for imperative languages that
+use a queue and a while statement to traverse through a graph.
+
+```
+def descend(graph, vertex) -> [edges]
+    ...
+
+def breathfirstsearch(graph, start, end):
+    queue = [start]
+    visited : dict[vertex, distance] = {start: 0}
+    while queue:
+        parent = queue.pop()
+        for edge in descend(graph, parent):
+            if edge in visited:
+                continue
+            if edge == end:
+                return(visited)
+            visited[edge] = visited[parent] + 1
+            queue.append(edge)
+    return visited
+```
+
+
+The problem is that we can't use this kind of logic in a functional language.
+Well we sort of can, but it requires a kind of iteration function where you pass
+in the queue and distances hashmap and return a new queue and updated distances.
+
+
+```
+bfs' :: Num a => Graph -> Vertex -> Vertex -> (Seq Vertex, HashMap Vertex a)
+bfs' graph start end = traverse queue visited
+  where
+    queue = S.singleton start
+    visited = HM.singleton start 0
+    traverse S.Empty d = (S.Empty, d)
+    traverse (vs :|> v) d = traverse newq newv
+      where
+        (newq, newv) = foldl' update' (vs, d) edges
+        edges = graph ! v
+        update' (vs', visited) (Edge e) = (vs'', visited')
+          where
+            (vs'', visited')
+              | HM.member e visited = (e <| vs', HM.insert e (visited ! v + 1) visited)
+              | otherwise = (vs', visited)
+```
+
+but perhaps we could traverse this graph and get a data structure of visited
+nodes before getting to the end in a different way. Instead of recursively going
+through and cycling through a queue to get a new 'state' we could build the
+visited data structure corecursively, that is create data from a seed. A graph
+is basically a function. 
+
+```
+type Graph a = a -> [a]
+graph 1 = [2,3]
+graph 2 = [4,5]
+graph 3 = [6,7]
+graph 5 = [8,9]
+graph 6 = [10]
+graph _ = []
+```
+
+With a starting point we can get a list of edges, which allows us to build out
+the rest of the graph until we reach an end point.
+
+```
+buildBfs seed = f b seed [] []
+  where
+    f combine x ls qs = combine (x : ls) (graph x : qs)
+    b _ [] = []
+    b input output = input : foldl (foldl f) b output [] []
+```
+
+but this is currently just like a tree because there are no cycles. So we need
+to check if we've visited that vertex before.
+
+We could instead use an `iterate` function that takes a seed, creates an output
+nand then applies a function on that output
+
+iterate can be implemented as:
+```
+iterate :: (a -> a) -> a -> [a]
+iterate f x = x : iterate f (f x)
+```
+but the base haskell already provides this. 
+
+The first thing that we want to do is to just iterate through the edges.
+Currently, the graph doesn't have any cycles, and so our graph acts more like a
+tree and we don't have to worry about passing through any vertices that we've
+already traveled through:
+
+```
+iterbfs :: a -> [[a]]
+iterbfs seed = frontier
+  where
+    frontier = iterate f (Set.singleton seed)
+    f = concatMap graph
+```
+
+This will result in a list of lists. Each list represents the "frontier" of our
+graph traversal. By moving along the list, we can see the frontier moving along
+as well. But the problem with this is that we need to account for previous
+vertices that we have already visited. We can do this by using the (\\) in the
+Data.List package, but instead we'll use the Data.Set package because sets are 
+more naturally used for comparing collections.
+
+```
+iterbfs :: a -> [[a]]
+iterbfs seed = frontier
+  where
+    frontier = iterate f (Set.singleton seed, Set.empty, 0)
+    f (edges, visited, distance) = (e, v, distance + 1)
+      where
+        e = Set.difference (Set.fromList . concatMap graph $ edges) visited
+        v = Set.union visited edges
+```
+
+I've also added a distance counter so that you could keep track of the distance
+from the starting point. This assumes that we are in an unweighted graph and
+the distance/weight from each vertex to another is 1.
+
+So to use this function, we would provide it with the `seed` value or start
+value and then use `drop` and `take` to get the values that we want. 
+
+For example, if we want to traverse the whole graph until there are no edges
+left that we haven't visited then
+
+```
+mygraph = iterbfs 1
+takeWhile (\(e,_,_) -> not (null e)) mygraph
+```
+
+if we're only interested in a certain end point then we could do
+
+```
+showend end = head . dropWhile (\(e,_,_) -> not (Set.member end e)) mygraph
+```
+
+
