@@ -1,7 +1,9 @@
+module UnderstandingBfs where
 import qualified Data.Set as Set
 
 -- https://meldingmonads.files.wordpress.com/2009/06/corecqueues.pdf
 -- https://doisinkidney.com/posts/2018-12-18-traversing-graphs.html
+import Data.List (foldl', unfoldr)
 type Graph a = a -> [a]
 
 graph 1 = [2, 3]
@@ -116,7 +118,7 @@ breadthFirstEnumerate ts = f ts b []
     f (Node x xs) fw bw = x : fw (xs : bw)
 
     b [] = []
-    b qs = foldl (foldr f) b qs []
+    b qs = foldl' (foldr f) b qs []
 
 -- from corecusion on wikipedia
 data Tree a b = Leaf a | Branch b (Tree a b) (Tree a b)
@@ -130,3 +132,6 @@ bftrav tree = queue
     gen 0 p = []
     gen len (Leaf _ : s) = gen (len - 1) s
     gen len (Branch _ l r : s) = l : r : gen (len + 1) s
+
+-- unfoldr -> build from a seed
+fibs = unfoldr (\a@(n,f) -> Just (a, (n + 1, f * (n + 1)))) (0, 1)
