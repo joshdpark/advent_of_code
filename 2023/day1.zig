@@ -2,18 +2,6 @@ const std = @import("std");
 const print = std.debug.print;
 const expect = std.testing.expect;
 
-fn parse_tens(str: [2]u8) u32 {
-    // print("strlen: {d}\n", .{str.len});
-    var a: u32 = 0;
-    for (str, 0..) |c, i| {
-        a += c - '0';
-        if (i + 1 == str.len)
-            break;
-        a *= 10;
-    }
-    return a;
-}
-
 /// returns a u8 because we're not going to advance more than 256 bytes
 fn match(str: []const u8, pattern: []const u8) bool {
     var i: u8 = 0;
@@ -26,119 +14,77 @@ fn match(str: []const u8, pattern: []const u8) bool {
     return false;
 }
 
-inline fn swap(x: *u8, y: *u8) void {
-    var t = x.*;
-    x.* = y.*;
-    y.* = t;
-}
-
-fn reverse(str: []u8) void {
-    // swap the first and last element
-    var i: u32 = 0;
-    while (i < str.len / 2) : (i += 1) {
-        swap(&str[i], &str[str.len - 1 - i]);
-    }
-}
-
 const Parser = struct {
-    str: []u8,
-    current: usize,
+    str: []const u8,
+    current: usize = 0,
 
-    const Digit = enum {
-        One,
-        Two,
-        Three,
-        Four,
-        Five,
-        Six,
-        Seven,
-        Eight,
-        Nine
+    const Digit = enum { One, Two, Three, Four, Five, Six, Seven, Eight, Nine };
+
+    fn parse(self: *Parser) ?Digit {
+        const ahead = self.str[self.current + 1 ..];
+        const c = self.str[self.current];
+        return switch (c) {
+            '1' => .One,
+            '2' => .Two,
+            '3' => .Three,
+            '4' => .Four,
+            '5' => .Five,
+            '6' => .Six,
+            '7' => .Seven,
+            '8' => .Eight,
+            '9' => .Nine,
+            'o' => if (match(ahead, "ne")) .One else null,
+            't' => if (match(ahead, "wo")) .Two else if (match(ahead, "hree")) .Three else null,
+            'f' => if (match(ahead, "our")) .Four else if (match(ahead, "ive")) .Five else null,
+            's' => if (match(ahead, "ix")) .Six else if (match(ahead, "even")) .Seven else null,
+            'e' => if (match(ahead, "ight")) .Eight else null,
+            'n' => if (match(ahead, "ine")) .Nine else null,
+            else => null,
+        };
+    }
+
+    fn parseForward(self: *Parser) !Digit {
+        self.current = 0;
+        while (self.current < self.str.len) {
+            if (self.parse()) |token|
+                return token
+            else
+                self.current += 1;
+        }
+        return error.parseError;
+    }
+
+    fn parseBackward(self: *Parser) !Digit {
+        self.current = self.str.len - 1;
+        while (self.current >= 0) {
+            if (self.parse()) |token|
+                return token
+            else
+                self.current -= 1;
+        }
+        return error.parseError;
+    }
+
+    fn digitToInt(t: Digit) u32 {
+        return switch (t) {
+            .One => 1,
+            .Two => 2,
+            .Three => 3,
+            .Four => 4,
+            .Five => 5,
+            .Six => 6,
+            .Seven => 7,
+            .Eight => 8,
+            .Nine => 9,
+        };
+    }
+
+    fn eval(self: *Parser) !u32 {
+        const left = try self.parseForward();
+        const right = try self.parseBackward();
+        return digitToInt(left) * 10 + digitToInt(right);
     }
 };
-
-fn digits(str: []u8) u32 {
-    // make ints a struct with data
-    // const parsed = struct {
-    //     data: u8,
-    //     end: u8,
-    // };
-    // var ints = [_]u8{0} ** 64; // unlikely that there are more than 64 ints in a line
-    // var ints_end: u8 = 0;
-    var current: u32 = 0;
-    while (current < str.len) {
-        var c = str[current];
-        // print("{c}\n", .{c});
-        if (c <= '9' and c >= '0') {
-            // ints[ints_end] = c;
-            // ints_end += 1;
-            // current += 1;
-            continue;
-        }
-        var ahead = str[current + 1 ..];
-        // if match, increment the current index and the ints index
-        switch (c) {
-            'o' => if (match(ahead, "ne")) {
-                ints[ints_end] = '1';
-                current += 3;
-                ints_end += 1;
-                continue;
-            },
-            't' => if (match(ahead, "wo")) {
-                ints[ints_end] = '2';
-                current += 3;
-                ints_end += 1;
-                continue;
-            } else if (match(ahead, "hree")) {
-                ints[ints_end] = '3';
-                current += 5;
-                ints_end += 1;
-                continue;
-            },
-            'f' => if (match(ahead, "our")) {
-                ints[ints_end] = '4';
-                current += 4;
-                ints_end += 1;
-                continue;
-            } else if (match(ahead, "ive")) {
-                ints[ints_end] = '5';
-                current += 4;
-                ints_end += 1;
-                continue;
-            },
-            's' => if (match(ahead, "ix")) {
-                ints[ints_end] = '6';
-                current += 3;
-                ints_end += 1;
-                continue;
-            } else if (match(ahead, "even")) {
-                ints[ints_end] = '7';
-                current += 5;
-                ints_end += 1;
-                continue;
-            },
-            'e' => if (match(ahead, "ight")) {
-                ints[ints_end] = '8';
-                current += 5;
-                ints_end += 1;
-                continue;
-            },
-            'n' => if (match(ahead, "ine")) {
-                ints[ints_end] = '9';
-                current += 4;
-                ints_end += 1;
-                continue;
-            },
-            else => {},
-        }
-        current += 1;
-    }
-    var result: [2]u8 = undefined;
-    result[0] = ints[0];
-    result[1] = if (ints[0..ints_end].len > 1) ints[ints_end - 1] else ints[0];
-    print("{c}\n", .{result});
-    return parse_tens(result);
-}
 
 pub fn main() !void {
 
@@ -159,7 +105,12 @@ pub fn main() !void {
     var result: u32 = 0;
     while (stream.streamUntilDelimiter(list.writer(), '\n', null)) {
         // std.debug.print("{s}\n", .{list.items});
-        result += digits(list.items);
+        var p = Parser{ .str = list.items };
+        if (p.eval()) |digit| {
+            result += digit;
+        } else |err| {
+            return err;
+        }
         list.clearRetainingCapacity();
     } else |_| {
         print("{d}", .{result});
@@ -192,16 +143,13 @@ test reverse {
     print("{s}\n", .{str});
 }
 
-test digits {
-    try expect(digits("9963onefourthree6oneightq") == 98);
-    try expect(digits("4nineeightseven2") == 42);
-    try expect(digits("3four") == 34);
-    try expect(digits("pqr3stu8vwx") == 38);
-    try expect(digits("treb7uchet") == 77);
-    try expect(digits("a1b2c3d4e5f") == 15);
-    try expect(digits("7pqrstsixteen") == 76);
-    try expect(digits("two1nine") == 29);
-    try expect(digits("eightwothree") == 83);
-    try expect(digits("abcone2threexyz") == 13);
-    try expect(digits("xgfrrnrlkgdqfxdtwo9fvthree") == 23);
+test Parser {
+    var str = "two";
+    var parser = Parser{ .str = str[0..] };
+    try expect(parser.parse() == Parser.Digit.Two);
+}
+
+test "parsing forward" {
+    var p = Parser{ .str = "t9963onefourthree6oneightq" };
+    print("{any}\n", .{p.eval()});
 }
